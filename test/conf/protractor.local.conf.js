@@ -8,6 +8,9 @@ config.multiCapabilities = [
     {
         browserName: 'chrome',
         logName: "Chrome",
+        'chromeOptions': {
+            args: ['disable-infobars']
+        },
         shardTestFiles: true,
     }
     ,

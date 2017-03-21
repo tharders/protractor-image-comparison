@@ -4,22 +4,11 @@ const fs = require('fs');
 const camelCase = require('camel-case');
 const imageComparison = require('../');
 const path = require('path');
-const screenshotPath = path.resolve(__dirname, '../.tmp/actual/');
-const differencePath = path.resolve(__dirname, '../.tmp/diff/');
 const helpers = require('./helpers');
 
 describe('protractor-protractor-image-comparison', () => {
     const logName = camelCase(browser.logName);
-    const devices = {
-        nexus_5ByGoogleAdb: {
-            name: `${logName}-360x640-dpr-3`
-        },
-        nexus_5ByGoogleChromeDriver: {
-            name: `${logName}-360x640-dpr-3`
-        }
-    };
     const dangerAlert = element(by.css('.uk-alert-danger'));
-    const headerElement = element(by.css('h1.uk-heading-large'));
 
     let ADBScreenshot;
 
@@ -47,7 +36,6 @@ describe('protractor-protractor-image-comparison', () => {
         });
 
         const examplePage = 'example-page-compare';
-        const examplePageFail = `${examplePage}-fail`;
 
         it('should compare successful with a baseline', () => {
             expect(browser.imageComparson.checkScreen(examplePage, {ignoreAntialiasing: true})).toEqual(0);
@@ -74,7 +62,6 @@ describe('protractor-protractor-image-comparison', () => {
         });
 
         const dangerAlertElement = 'dangerAlert-compare';
-        const dangerAlertElementFail = `${dangerAlertElement}-fail`;
 
         it('should compare successful with a baseline', () => {
             browser.executeScript('arguments[0].scrollIntoView();', dangerAlert.getWebElement())
@@ -99,11 +86,10 @@ describe('protractor-protractor-image-comparison', () => {
 
                     return browser.get(browser.baseUrl);
                 })
-                .then(() => browser.sleep(1500));
+                .then(() => browser.sleep(2000));
         });
 
         const exampleFullPage = 'example-fullpage-compare';
-        const examplePageFail = `${exampleFullPage}-fail`;
 
         it('should compare successful with a baseline', () => {
             expect(browser.imageComparson.checkFullPageScreen(exampleFullPage, {ignoreAntialiasing: true})).toEqual(0);
