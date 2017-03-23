@@ -18,7 +18,7 @@ const resembleJS = require('./lib/resemble');
  * @param {string} options.screenshotPath Path to the folder where the screenshots are saved
  * @param {boolean} options.autoSaveBaseline If no baseline image is found the image is automatically copied to the baselinefolder
  * @param {boolean} options.debug Add some extra logging and always save the image difference (default:false)
- * @param {string} options.formatImageName Custom variables for Image Name (default:{tag}-{browserName}-{width}x{height}-dpr-{dpr})
+ * @param {string} options.formatImageName Custom letiables for Image Name (default:{tag}-{browserName}-{width}x{height}-dpr-{dpr})
  * @param {boolean} options.disableCSSAnimation Disable all css animations on a page (default:false)
  * @param {boolean} options.nativeWebScreenshot If a native screenshot of a device (complete screenshot) needs to be taken (default:false)
  * @param {boolean} options.blockOutStatusBar  If the statusbar on mobile / tablet needs to blocked out by default
@@ -419,14 +419,14 @@ class protractorImageComparison {
      * There is a bug in chromium to determine the correct position to the top, see:
      * https://bugs.chromium.org/p/chromium/issues/detail?id=489206#c43
      *
-     * `var elementPosition = element.getBoundingClientRect();` will not give a correct top in all cases
+     * `let elementPosition = element.getBoundingClientRect();` will not give a correct top in all cases
      */
     _getAndroidChromeElementPosition(element, statusPlusAddressBarHeight, addressBarShadowPadding) {
         function getDataObject(element, statusPlusAddressBarHeight, addressBarShadowPadding) {
-            var picDummy = document.getElementById('pic-dummy');
+            let picDummy = document.getElementById('pic-dummy');
 
             if (picDummy === null) {
-                var dummyEl = document.createElement('div');
+                let dummyEl = document.createElement('div');
                 dummyEl.id = "pic-dummy";
                 dummyEl.style = 'position: absolute; left: 0px; top: 0px; width: 1px; height: 1px; visibility: hidden';
                 document.body.appendChild(dummyEl);
@@ -434,8 +434,8 @@ class protractorImageComparison {
 
             picDummy = document.getElementById('pic-dummy');
 
-            var elementPositionTop = Math.abs(document.body.scrollTop - (element.getBoundingClientRect().top - picDummy.getBoundingClientRect().top));
-            var elementPositionLeft = element.getBoundingClientRect().left;
+            let elementPositionTop = Math.abs(document.body.scrollTop - (element.getBoundingClientRect().top - picDummy.getBoundingClientRect().top));
+            let elementPositionLeft = element.getBoundingClientRect().left;
 
             return {
                 x: elementPositionLeft,
@@ -450,7 +450,7 @@ class protractorImageComparison {
      * Get the height of the statusbar and addressbar of Android Chrome browser based on the fact that a
      * screenshot on Android is a device screenshot including:
      * - statusbar (given default height = 24 px)
-     * - addressbar (can variate in height in Chrome. In chrome is can be max 56px but after scroll it will be smaller)
+     * - addressbar (can letiate in height in Chrome. In chrome is can be max 56px but after scroll it will be smaller)
      * - the viewport
      * - sometimes a toolbar
      * @return {Promise.<number>}
@@ -595,7 +595,7 @@ class protractorImageComparison {
      */
     _getIOSPosition(element, heights) {
         function getDataObject(element, heights) {
-            var elementPosition,
+            let elementPosition,
                 y;
 
             if (heights.screenHeight === heights.viewPortHeight || heights.rotatedScreenHeight === heights.viewPortHeight) {
@@ -620,7 +620,7 @@ class protractorImageComparison {
     /**
      * Get the heights of Apple Safari browser based on the fact that a screenshot on Apple is a device screenshot including:
      * - statusbar
-     * - addressbar (can variate in height in Safari. Can be smaller after scroll, an app doesn't have a navbar)
+     * - addressbar (can letiate in height in Safari. Can be smaller after scroll, an app doesn't have a navbar)
      * - the viewport (innerheight)
      * - toolbar
      * @return {Promise.<object>} height object containing addressBarCurrentHeight, innerHeight, rotatedScreenHeight, screenHeight and screenWidth
@@ -828,7 +828,7 @@ class protractorImageComparison {
         return browser.driver.executeScript(setCSS, this.disableCSSAnimation, this.addressBarShadowPadding, this.toolBarShadowPadding);
 
         function setCSS(disableCSSAnimation, addressBarShadowPadding, toolBarShadowPadding) {
-            var animation = '* {' +
+            let animation = '* {' +
                     '-webkit-transition-duration: 0s !important;' +
                     'transition-duration: 0s !important;' +
                     '-webkit-animation-duration: 0s !important;' +
