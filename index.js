@@ -1065,7 +1065,7 @@ class protractorImageComparison {
                 this.screenshotHeight = (bufferedScreenshot.readUInt32BE(20) / this.devicePixelRatio); // width = 16
 
                 const rectangles = this._multiplyObjectValuesAgainstDPR({
-                    height: this.screenshotHeight > this.viewPortHeight ? this.screenshotHeight : this.viewPortHeight,
+                    height: Math.max(this.screenshotHeight, this.viewPortHeight),
                     width: this.viewPortWidth,
                     x: 0,
                     y: 0
