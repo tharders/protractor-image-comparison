@@ -1,3 +1,50 @@
+# CHANGELOG
+
+<a name="1.7.0"></a>
+# [1.7.0](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.6.1...v1.67.0) (2018-04-19)
+
+### Feature
+
+* Added tolerance property that prevents saving result image to diff folder [55](https://github.com/wswebcreation/protractor-image-comparison/pull/55), tnx to [IgorSasovets](https://github.com/IgorSasovets )
+
+<a name="1.6.1"></a>
+# [1.6.1](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.6.0...v1.6.1) (2018-04-01)
+
+### Bugfix
+
+* Fix `imageHeight` to set it correctly, if `screens.length === 1`, see [54](https://github.com/wswebcreation/protractor-image-comparison/pull/54), tnx to [JochenDiekenbrock](https://github.com/JochenDiekenbrock )
+
+<a name="1.6.0"></a>
+# [1.6.0](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.5.1...v1.6.0) (2018-03-04)
+
+### Feature
+
+* Enable taking screenshot directly from canvas, see [47](https://github.com/wswebcreation/protractor-image-comparison/pull/47), tnx to [tuomas2](https://github.com/tuomas2)
+
+
+<a name="1.5.1"></a>
+# [1.5.1](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.5.0...v1.5.1) (2018-01-13)
+
+### Bugfix
+
+* Fix options parsing in `_executeImageComparison`, see [43](https://github.com/wswebcreation/protractor-image-comparison/pull/43), tnx to [Juravenator](https://github.com/Juravenator)
+
+<a name="1.5.0"></a>
+# [1.5.0](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.4.0...v1.5.0) (2017-12-17)
+
+### Features
+
+* Remove temporary saving (fullpage)screenshots by saving them to a buffer array. This should prevent an overkill of temp screenshots
+
+<a name="1.4.0"></a>
+# [1.4.0](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.3.0...v1.4.0) (2017-11-17)
+
+
+### Features
+
+* Add parameter for enabling scrollbars (default value = hide) ([38](https://github.com/wswebcreation/protractor-image-comparison/pull/38))
+
+
 <a name="1.3.0"></a>
 # [1.3.0](https://github.com/wswebcreation/protractor-image-comparison/compare/v1.2.5...v1.3.0) (2017-08-27)
 
@@ -5,8 +52,6 @@
 ### Features
 
 * Ignore regions by making them transparent in the base image ([a7ec187](https://github.com/wswebcreation/protractor-image-comparison/commit/a7ec1873a5429eb077c4fa4dc82edd07f179f4f6))
-
-
 
 
 <a name="1.2.5"></a>

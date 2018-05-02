@@ -20,6 +20,7 @@ const resembleJS = require('./lib/resemble');
  * @param {boolean} options.debug Add some extra logging and always save the image difference (default:false)
  * @param {string} options.formatImageName Custom variables for Image Name (default:{tag}-{browserName}-{width}x{height}-dpr-{dpr})
  * @param {boolean} options.disableCSSAnimation Disable all css animations on a page (default:false)
+ * @param {boolean} options.hideScrollBars Hide all scrolls on a page (default:true)
  * @param {boolean} options.nativeWebScreenshot If a native screenshot of a device (complete screenshot) needs to be taken (default:false)
  * @param {boolean} options.blockOutStatusBar  If the statusbar on mobile / tablet needs to blocked out by default
  * @param {boolean} options.ignoreAntialiasing compare images an discard anti aliasing
@@ -27,6 +28,7 @@ const resembleJS = require('./lib/resemble');
  * @param {boolean} options.ignoreTransparentPixel Will ignore all pixels that have some transparency in one of the images
  * @param {object} options.androidOffsets Object that will hold custom values for the statusBar, addressBar, addressBarScrolled and toolBar
  * @param {object} options.iosOffsets Object that will hold the custom values for the statusBar, addressBar, addressBarScrolled and toolBar
+ * @param {number} options.saveAboveTolerance Allowable value of misMatchPercentage that prevents saving image with differences
  *
  * @property {string} actualFolder Path where the actual screenshots are saved
  * @property {number} addressBarShadowPadding Mobile Chrome and mobile Safari have a shadow below the addressbar, this property will make sure that it wont be seen in the image
@@ -64,6 +66,7 @@ class protractorImageComparison {
         this.autoSaveBaseline = options.autoSaveBaseline || false;
         this.debug = options.debug || false;
         this.disableCSSAnimation = options.disableCSSAnimation || false;
+        this.hideScrollBars = options.hideScrollBars !== false;
         this.formatString = options.formatImageName || '{tag}-{browserName}-{width}x{height}-dpr-{dpr}';
 
         this.nativeWebScreenshot = !!options.nativeWebScreenshot;
@@ -72,6 +75,8 @@ class protractorImageComparison {
         this.ignoreAntialiasing = options.ignoreAntialiasing || false;
         this.ignoreColors = options.ignoreColors || false;
         this.ignoreTransparentPixel = options.ignoreTransparentPixel || false;
+
+        this.saveAboveTolerance = options.saveAboveTolerance || 0;
 
         // OS offsets
         let androidOffsets = options.androidOffsets && typeof options.androidOffsets === 'object' ? options.androidOffsets : {};
@@ -122,7 +127,10 @@ class protractorImageComparison {
         fs.ensureDirSync(this.actualFolder);
         fs.ensureDirSync(this.baselineFolder);
         fs.ensureDirSync(this.diffFolder);
-        fs.ensureDirSync(this.tempFullScreenFolder);
+
+        if(this.debug) {
+            fs.ensureDirSync(this.tempFullScreenFolder);
+        }
     }
 
     /**
@@ -152,31 +160,35 @@ class protractorImageComparison {
     }
 
     /**
-     * Compose a full page screenshot and save it
+     * Save a full page screenshot
      * @param {string} tag The tag that is used
-     * @param {number} amountOfScreenshots The amount of amountOfScreenshots that need to be processed
-     * @param {number} currentScreenshotNumber The current currentScreenshotNumber of the screenshot that is being processed
-     * @param {string} image The current image output that needs to be saved
+     * @param {Array} screens An array full of buffered screenshots
      * @returns {Promise}
      * @private
      */
-    _composeAndSaveFullScreenshot(tag, amountOfScreenshots, currentScreenshotNumber, image) {
-        const imageHeight = this.fullPageHeight * this.devicePixelRatio;
-        const imageWidth = this.viewPortWidth * this.devicePixelRatio;
-        const stitchHeightCoordinate = (this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding) * (currentScreenshotNumber - 1) * this.devicePixelRatio;
+    _saveFullScreenshot(tag, screens) {
+        // Calculate total canvas size
+        let imageHeight;
 
-        let imageOutput = image || null;
-
-        if (currentScreenshotNumber === 1) {
-            imageOutput = PNGJSImage.createImage(imageWidth, imageHeight);
-        } else if (currentScreenshotNumber > amountOfScreenshots) {
-            return Promise.resolve(imageOutput.writeImageSync(path.join(this.actualFolder, this._formatFileName(tag))));
+        if (screens.length > 1) {
+            imageHeight = screens.reduce(
+                (previous, current) => (previous instanceof Buffer ? previous.readUInt32BE(20) : previous) + current.readUInt32BE(20));
+        } else {
+            imageHeight = screens[0].readUInt32BE(20);
         }
 
-        const stitchImage = PNGJSImage.readImageSync(path.join(this.tempFullScreenFolder, this._formatFileName(`${tag}-${currentScreenshotNumber}`)));
-        stitchImage.getImage().bitblt(imageOutput.getImage(), 0, 0, stitchImage.getWidth(), stitchImage.getHeight(), 0, stitchHeightCoordinate);
+        const imageWidth = screens[0].readUInt32BE(16);
+        const imageOutput = PNGJSImage.createImage(imageWidth, imageHeight);
+        let offsetY = 0;
 
-        return this._composeAndSaveFullScreenshot(tag, amountOfScreenshots, currentScreenshotNumber + 1, imageOutput)
+        // Compose PNG
+        for (let screen of screens) {
+            let height = screen.readUInt32BE(20);
+            PNGJSImage.loadImageSync(screen).getImage().bitblt(imageOutput.getImage(), 0, 0, imageWidth, height, 0, offsetY);
+            offsetY += height;
+        }
+
+        return Promise.resolve(imageOutput.writeImageSync(path.join(this.actualFolder, this._formatFileName(tag))));
     }
 
     /**
@@ -304,7 +316,7 @@ class protractorImageComparison {
 
                     if (this.isLastScreenshot) {
                         mobileCropData.cropHeight = this.fullPageHeight - ((this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding) * (cropParameters.currentScreenshotNumber - 1));
-                        mobileCropData.cropTopPosition = statusPlusAddressBarHeight + (this.viewPortHeight- this.toolBarShadowPadding) - mobileCropData.cropHeight;
+                        mobileCropData.cropTopPosition = statusPlusAddressBarHeight + (this.viewPortHeight - this.toolBarShadowPadding) - mobileCropData.cropHeight;
                     } else {
                         mobileCropData.cropHeight = this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding;
                         mobileCropData.cropTopPosition = statusPlusAddressBarHeight + this.addressBarShadowPadding;
@@ -319,7 +331,7 @@ class protractorImageComparison {
 
                     if (this.isLastScreenshot) {
                         mobileCropData.cropHeight = this.fullPageHeight - ((this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding) * (cropParameters.currentScreenshotNumber - 1));
-                        mobileCropData.cropTopPosition = safariHeights.addressBarCurrentHeight + (this.viewPortHeight- this.toolBarShadowPadding) - mobileCropData.cropHeight;
+                        mobileCropData.cropTopPosition = safariHeights.addressBarCurrentHeight + (this.viewPortHeight - this.toolBarShadowPadding) - mobileCropData.cropHeight;
                     } else {
                         mobileCropData.cropHeight = this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding;
                         mobileCropData.cropTopPosition = safariHeights.addressBarCurrentHeight + this.addressBarShadowPadding;
@@ -339,6 +351,7 @@ class protractorImageComparison {
      * @param {boolean} compareOptions.ignoreAntialiasing compare images an discard anti aliasing
      * @param {boolean} compareOptions.ignoreColors Even though the images are in colour, the comparison wil compare 2 black/white images
      * @param {boolean} compareOptions.ignoreTransparentPixel Will ignore all pixels that have some transparency in one of the images
+     * @param {number} compareOptions.saveAboveTolerance Allowable value of misMatchPercentage that prevents saving image with differences
      * @returns {Promise}
      * @private
      */
@@ -346,11 +359,12 @@ class protractorImageComparison {
         const imageComparisonPaths = this._determineImageComparisonPaths(tag);
         const ignoreRectangles = 'blockOut' in compareOptions ? compareOptions.blockOut : [];
         const blockOutStatusBar = compareOptions.blockOutStatusBar || compareOptions.blockOutStatusBar === false ? compareOptions.blockOutStatusBar : this.blockOutStatusBar;
+        const saveAboveTolerance = compareOptions.saveAboveTolerance || this.saveAboveTolerance;
 
         // comparison options are not available anymore, due to new version and api
         compareOptions.ignoreAntialiasing = 'ignoreAntialiasing' in compareOptions ? compareOptions.ignoreAntialiasing : this.ignoreAntialiasing;
         compareOptions.ignoreColors = 'ignoreColors' in compareOptions ? compareOptions.ignoreColors : this.ignoreColors;
-        compareOptions.ignoreRectangles = 'ignoreRectangles' in compareOptions ? compareOptions.ignoreRectangles.push(ignoreRectangles) : ignoreRectangles;
+        compareOptions.ignoreRectangles = 'ignoreRectangles' in compareOptions ? compareOptions.ignoreRectangles.concat(ignoreRectangles) : ignoreRectangles;
         compareOptions.ignoreTransparentPixel = 'ignoreTransparentPixel' in compareOptions ? compareOptions.ignoreTransparentPixel : this.ignoreTransparentPixel;
 
         if (this._isMobile() && ((this.nativeWebScreenshot && compareOptions.isScreen) || (this._isIOS())) && blockOutStatusBar) {
@@ -374,7 +388,7 @@ class protractorImageComparison {
         return new Promise(resolve => {
             resembleJS(imageComparisonPaths.baselineImage, imageComparisonPaths.actualImage, compareOptions)
                 .onComplete(data => {
-                    if (Number(data.misMatchPercentage) > 0 || this.debug) {
+                    if (Number(data.misMatchPercentage) > saveAboveTolerance || this.debug) {
                         data.getDiffImage().pack().pipe(fs.createWriteStream(imageComparisonPaths.imageDiffPath));
                     }
                     resolve(Number(data.misMatchPercentage));
@@ -745,6 +759,34 @@ class protractorImageComparison {
     }
 
     /**
+     * Create a new cropped buffered image
+     * @param {object} bufferedScreenshot a new Buffer screenshot
+     * @param {object} rectangles x, y, height and width data to determine the crop
+     * @returns {Buffer} The image buffer
+     * @private
+     */
+    _getCroppedBufferedScreenshot(bufferedScreenshot, rectangles) {
+        let imageHeight;
+        const image = PNGJSImage.loadImageSync(bufferedScreenshot);
+
+        // When coordinates have decimals they are `round`ed. This means that the total amount can be bigger
+        // than the image. That's why we need to resize it.
+        if ((rectangles.height + rectangles.y) > image.getHeight()) {
+            imageHeight = rectangles.height - ((rectangles.height + rectangles.y) - image.getHeight());
+        } else {
+            imageHeight = rectangles.height;
+        }
+
+        const imageWidth = rectangles.width;
+        // Create the canvas
+        const imageOutput = PNGJSImage.createImage(imageWidth, imageHeight);
+        // Create the image
+        image.getImage().bitblt(imageOutput.getImage(), rectangles.x, rectangles.y, imageWidth, imageHeight, 0, 0);
+
+        return imageOutput.toBlobSync();
+    }
+
+    /**
      * Scroll to static horizontal and a given vertical coordinate on the page and wait a given time.
      * @param {number} verticalCoordinate The y-coordinate that needs to be scrolled to
      * @param {number} timeOut The time to wait after the scroll
@@ -761,10 +803,11 @@ class protractorImageComparison {
      * @param {number} newVerticalCoordinate The vertical coordinate that needs to be scrolled to
      * @param {string} tag The tag that is used
      * @param {number} currentScreenshotNumber The currentScreenshotNumber of the screen that is being processed
+     * @param {Array} screens An array full of buffered screenshots
      * @returns {Promise}
      * @private
      */
-    _scrollAndSave(newVerticalCoordinate, tag, currentScreenshotNumber) {
+    _scrollAndSave(newVerticalCoordinate, tag, currentScreenshotNumber, screens) {
         const previousVerticalCoordinate = (currentScreenshotNumber - 1) * this.viewPortHeight;
 
         let bufferedScreenshot;
@@ -810,15 +853,17 @@ class protractorImageComparison {
                     console.log('cropTopPosition = ', cropData.cropTopPosition);
                     console.log('rectangles =', rectangles);
                     console.log('####################################################\n');
+                    this._saveCroppedScreenshot(bufferedScreenshot, this.tempFullScreenFolder, rectangles, `${tag}-${currentScreenshotNumber}`);
                 }
-
-                return this._saveCroppedScreenshot(bufferedScreenshot, this.tempFullScreenFolder, rectangles, `${tag}-${currentScreenshotNumber}`);
+                return this._getCroppedBufferedScreenshot(bufferedScreenshot, rectangles);
             })
-            .then(() => {
+            .then((screen) => {
+                screens.push(screen);
+
                 if (this.isLastScreenshot) {
-                    return this._composeAndSaveFullScreenshot(tag, currentScreenshotNumber, 1);
+                    return this._saveFullScreenshot(tag, screens);
                 } else {
-                    return this._scrollAndSave((this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding) * currentScreenshotNumber, tag, currentScreenshotNumber + 1);
+                    return this._scrollAndSave((this.viewPortHeight - this.addressBarShadowPadding - this.toolBarShadowPadding) * currentScreenshotNumber, tag, currentScreenshotNumber + 1, screens);
                 }
             });
     }
@@ -829,9 +874,9 @@ class protractorImageComparison {
      * @private
      */
     _setCustomTestCSS() {
-        return browser.driver.executeScript(setCSS, this.disableCSSAnimation, this.addressBarShadowPadding, this.toolBarShadowPadding);
+        return browser.driver.executeScript(setCSS, this.disableCSSAnimation, this.hideScrollBars, this.addressBarShadowPadding, this.toolBarShadowPadding);
 
-        function setCSS(disableCSSAnimation, addressBarShadowPadding, toolBarShadowPadding) {
+        function setCSS(disableCSSAnimation, hideScrollBars, addressBarShadowPadding, toolBarShadowPadding) {
             var animation = '* {' +
                     '-webkit-transition-duration: 0s !important;' +
                     'transition-duration: 0s !important;' +
@@ -841,7 +886,7 @@ class protractorImageComparison {
                 scrollBar = '*::-webkit-scrollbar { display:none; !important}',
                 bodyTopPadding = addressBarShadowPadding === 0 ? '' : 'body{padding-top:' + addressBarShadowPadding + 'px !important}',
                 bodyBottomPadding = toolBarShadowPadding === 0 ? '' : 'body{padding-bottom:' + toolBarShadowPadding + 'px !important}',
-                css = disableCSSAnimation ? scrollBar + animation + bodyTopPadding + bodyBottomPadding : scrollBar + bodyTopPadding + bodyBottomPadding,
+                css = (disableCSSAnimation ? animation : '') + (hideScrollBars ? scrollBar : '') + bodyTopPadding + bodyBottomPadding,
                 head = document.head || document.getElementsByTagName('head')[0],
                 style = document.createElement('style');
 
@@ -915,6 +960,8 @@ class protractorImageComparison {
      * browser.protractorImageComparison.checkFullPageScreen('imageA', {ignoreColors: true});
      * // Ignore alpha pixel
      * browser.protractorImageComparison.checkFullPageScreen('imageA', {ignoreTransparentPixel: true});
+     * // Set allowable percentage of mismatches
+     * browser.protractorImageComparison.checkFullPageScreen('imageA', {saveAboveTolerance: 0.5});
      *
      * @param {string} tag The tag that is used
      * @param {object} options (non-default) options
@@ -922,6 +969,7 @@ class protractorImageComparison {
      * @param {object} options.blockOut blockout with x, y, width and height values
      * @param {boolean} options.disableCSSAnimation enable or disable CSS animation
      * @param {int} options.fullPageScrollTimeout The time that needs to be waited when scrolling to a point and save the screenshot
+     * @param {double} options.saveAboveTolerance Allowable percentage of mismatches
      * @return {Promise} When the promise is resolved it will return the percentage of the difference
      * @public
      */
@@ -988,15 +1036,19 @@ class protractorImageComparison {
      * browser.protractorImageComparison.saveElement(element(By.id('elementId')), 'imageA', {resizeDimensions: 15});
      * // Disable css animation on all elements
      * browser.protractorImageComparison.saveElement(element(By.id('elementId')), 'imageA', {disableCSSAnimation: true});
+     * // Take screenshot directly of a canvas element
+     * browser.protractorImageComparison.saveElement(element(By.id('canvasID')), 'imageA', {canvasScreenshot: true});
      *
      * @param {Promise} element The ElementFinder that is used to get the position
      * @param {string} tag The tag that is used
      * @param {object} options (non-default) options
      * @param {int} options.resizeDimensions the value to increase the size of the element that needs to be saved
      * @param {boolean} options.disableCSSAnimation enable or disable CSS animation
+     * @param {boolean} options.canvasScreenshot enable or disable taking screenshot directly from canvas (via dataUrl instead of browser.takeScreenshot()). !!This isn't supported in IE11 and Safari 9!!
      * @returns {Promise} The images has been saved when the promise is resolved
      * @public
      */
+
     saveElement(element, tag, options) {
         let saveOptions = options || [];
         let bufferedScreenshot;
@@ -1006,12 +1058,23 @@ class protractorImageComparison {
         this.disableCSSAnimation = saveOptions.disableCSSAnimation || saveOptions.disableCSSAnimation === false ? saveOptions.disableCSSAnimation : this.disableCSSAnimation;
 
         return this._getInstanceData()
-            .then(() => browser.takeScreenshot())
+            .then(() => {
+                    if(saveOptions.canvasScreenshot) {
+                        return element.getWebElement()
+                            .then(elem => browser.executeScript((canvas) => canvas.toDataURL('image/png'), elem))
+                            .then(dataUrl => dataUrl.split(',')[1]);
+                    }
+                    else {
+                        return browser.takeScreenshot()
+                    }
+                }
+            )
             .then(screenshot => {
                 bufferedScreenshot = new Buffer(screenshot, 'base64');
                 this.screenshotHeight = (bufferedScreenshot.readUInt32BE(20) / this.devicePixelRatio); // width = 16
 
-                return this._determineRectangles(element);
+                if(!saveOptions.canvasScreenshot)
+                    return this._determineRectangles(element);
             })
             .then(rectangles => this._saveCroppedScreenshot(bufferedScreenshot, this.actualFolder, rectangles, tag));
     }
@@ -1045,7 +1108,7 @@ class protractorImageComparison {
 
         // Start scrolling at y=0
         return this._getInstanceData()
-            .then(() => this._scrollAndSave(0, tag, 1));
+            .then(() => this._scrollAndSave(0, tag, 1, []));
     }
 
     /**

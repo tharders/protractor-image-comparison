@@ -1,7 +1,7 @@
 protractor-image-comparison
 ==========
 
-[![dependencies Status](https://david-dm.org/wswebcreation/protractor-image-comparison/status.svg)](https://david-dm.org/wswebcreation/protractor-image-comparison) [![Build Status](https://travis-ci.org/wswebcreation/protractor-image-comparison.svg?branch=master)](https://travis-ci.org/wswebcreation/protractor-image-comparison) [![Sauce Test Status](https://saucelabs.com/buildstatus/wswebcreation-nl)](https://saucelabs.com/u/wswebcreation-nl)
+[![Join the chat at https://gitter.im/wswebcreation/protractor-image-comparison](https://badges.gitter.im/wswebcreation/protractor-image-comparison.svg)](https://gitter.im/wswebcreation/protractor-image-comparison?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![dependencies Status](https://david-dm.org/wswebcreation/protractor-image-comparison/status.svg)](https://david-dm.org/wswebcreation/protractor-image-comparison) [![Build Status](https://travis-ci.org/wswebcreation/protractor-image-comparison.svg?branch=master)](https://travis-ci.org/wswebcreation/protractor-image-comparison) [![Sauce Test Status](https://saucelabs.com/buildstatus/wswebcreation-nl)](https://saucelabs.com/u/wswebcreation-nl)
 
 [![NPM](https://nodei.co/npm/protractor-image-comparison.png)](https://nodei.co/npm/protractor-image-comparison/)
 
@@ -13,16 +13,19 @@ protractor-image-comparison
 You can:
 
 - save or compare screens / elements against a baseline
-- **NEW:** save or compare a fullpage screenshot against a baseline (**desktop AND mobile are now supported**)
-- **NEW** automatically create a baseline when no baseline is there
+- save or compare a fullpage screenshot against a baseline (**desktop AND mobile are now supported**)
+- automatically create a baseline when no baseline is there
 - disable css animations by default
 - ignore anti-aliasing differences
 - compare images by ignoring their colors (do a grayscale comparison)
 - blockout custom regions during comparison (all)
-- **NEW** ignore regions by making them transparent in the base image (all) thanks to [tharders](https://github.com/tharders)
+- ignore regions by making them transparent in the base image (all) thanks to [tharders](https://github.com/tharders)
+- parameter to hide / show scrollbars [pnad](https://github.com/pnad)
 - increase the element dimenisions screenshots (all)
 - provide custom iOS and Android offsets for status-/address-/toolbar (mobile only)
 - automatically exclude a statusbar during screencomparison (mobile only)
+- taking a screenshot directly from canvas, tnx to [tuomas2](https://github.com/tuomas2), see [here](https://github.com/wswebcreation/protractor-image-comparison/blob/master/docs/index.md#saveelementelement-tag-options--promise). **!!This isn't supported in IE11 and Safari 9!!**
+- **NEW**, use a tolerance property called `saveAboveTolerance` that prevents saving result image to diff folder, tnx to [IgorSasovets](https://github.com/IgorSasovets )**
 
 Comparison is based on [ResembleJS](https://github.com/Huddle/Resemble.js).
 
@@ -60,7 +63,7 @@ If you instantiate `protractor-image-comparsion` with `autoSaveBaseline: true`, 
 *protractor-image-comparison* provides:
 
 - two comparison methods `checkScreen` and `checkElement`.
-- two helper methods `saveElement` and `saveElement` for saving images.
+- two helper methods `saveScreen` and `saveElement` for saving images.
 - **NEW** a helper `saveFullPageScreens` and a comparison method `checkFullPageScreen` for saving and comparing a fullpage screenshot.
 
 The comparison methods return a result in percentages like `0` or `3.94`.
@@ -73,6 +76,13 @@ See [conventions.md](./docs/conventions.md).
 
 ## Contribution
 See [CONTRIBUTING.md](./docs/CONTRIBUTING.md).
+
+## FAQ
+### Width and height cannot be negative
+It could be that the error `Width and height cannot be negative` is thrown. 9 out of 10 times this is related to creating an image of an element that is not in the view. Please be sure you always make sure the element in is in the view before you try to make an image of the element.
+
+### Changing the color on an element is not detected by protractor-image-comparison
+When using Chrome and using the `chromeOptions.args:['--disable-gpu']` it could be possible that the images can't be compared in the correct way. If you remove this argument all will work again. See [here](https://github.com/wswebcreation/protractor-image-comparison/issues/33#issuecomment-333409063)
 
 ## Credits
 - Basic logic of `index.js` based on [PixDiff](https://github.com/koola/pix-diff)
